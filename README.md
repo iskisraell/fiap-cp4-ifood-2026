@@ -4,9 +4,12 @@ Entrega integrada de Cognitive Data Science e Machine Learning & Modelling.
 
 ## Notebook
 
-- [Notebook executado no Colab](https://colab.research.google.com/drive/1fSOEgGY4zv_y6LArEs0ijIyTCsYpsqU0?usp=sharing)
+- [Notebook atualizado no Colab](https://colab.research.google.com/github/iskisraell/fiap-cp4-ifood-2026/blob/main/CP4_Cognitive_Data_Science_COLAB.ipynb)
+- [Notebook compartilhado anteriormente](https://colab.research.google.com/drive/1fSOEgGY4zv_y6LArEs0ijIyTCsYpsqU0?usp=sharing)
 - Tabela Oracle usada: `IFOOD_CUSTOMERS`
 - Dataset: 2.240 registros e 29 colunas
+
+Antes da conexão, no Colab abra `Secrets`, crie `ORACLE_PASSWORD`, informe a senha e ative o acesso para o notebook. Se o segredo não existir, a célula pede a senha sem exibi-la. A credencial não está no código.
 
 ## Conteudo
 
