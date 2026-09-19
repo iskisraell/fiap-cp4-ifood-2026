@@ -1,0 +1,6 @@
+__pycache__/
+.env
+*.pyc
+*.tmp
+oracle_validation.txt
+deliverable_fiap/
