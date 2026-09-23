@@ -5,7 +5,10 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).parent
-OUT = ROOT / "deliverable_fiap" / "CP4_Cognitive_Data_Science_COLAB.ipynb"
+OUTPUT_DIR = ROOT / "deliverable_fiap"
+if not OUTPUT_DIR.exists():
+    OUTPUT_DIR = ROOT
+OUT = OUTPUT_DIR / "CP4_Cognitive_Data_Science_COLAB.ipynb"
 
 
 def md(text):
@@ -43,29 +46,15 @@ def main():
 FROM IFOOD_CUSTOMERS
 ORDER BY ID"""
 
-    metrics_output = (
-        "model        reference\n"
-        "precision     0.563636\n"
-        "recall        0.462687\n"
-        "f1            0.508197\n"
-        "roc_auc       0.697027\n"
-        "best_params\n"
-        "{'model__class_weight': 'balanced', 'model__criterion': 'gini', 'model__max_depth': 8, 'model__min_samples_leaf': 20}\n"
-        "model           tuned\n"
-        "precision    0.362319\n"
-        "recall       0.746269\n"
-        "f1           0.487805\n"
-        "roc_auc      0.834019"
-    )
-
     cells = [
         md(
             "# CP4 - Case iFood\n\n"
             "Cognitive Data Science + Machine Learning & Modelling\n\n"
+            "Grupo Perceptron, sala 1TIAPZ-2026.\n\n"
             "Execute as células nesta ordem. A senha Oracle nunca deve ser escrita no notebook."
         ),
         code(
-            "!pip -q install oracledb scikit-learn pandas\n"
+            "!pip -q install numpy==2.4.4 pandas==3.0.2 scikit-learn==1.9.1 oracledb==3.3.0\n"
             "import getpass\n"
             "import oracledb\n"
             "import pandas as pd",
@@ -95,23 +84,51 @@ ORDER BY ID"""
             "print('shape:', df.shape)\n"
             "print('INCOME nulo:', int(df['INCOME'].isna().sum()))",
         ),
-        md(
-            "## 2. Pipeline e Feature Engineering\n\n"
-            "O holdout estratificado é separado antes do tuning. Imputação, codificação e treino usam somente o conjunto de treino."
-        ),
         code(pipeline),
+        md(
+            "## 2. EDA\n\n"
+            "A análise verifica o desbalanceamento do alvo, valores ausentes, duplicidades e perfis de features repetidos. "
+            "A taxa global de RESPONSE descreve o desbalanceamento; não comparamos o alvo por grupo antes do holdout."
+        ),
+        code(
+            "eda = df.copy()\n"
+            "eda.columns = [str(column).upper() for column in eda.columns]\n"
+            "source_columns = len(eda.columns)\n"
+            "X_eda, y_eda, groups_eda = build_features(eda)\n"
+            "profile_sizes = pd.Series(groups_eda).value_counts()\n"
+            "positive = int(y_eda.sum())\n"
+            "summary = pd.DataFrame({\n"
+            "    'Indicador': ['Linhas', 'Colunas da query', 'Resposta positiva', 'INCOME nulo', 'Linhas completas duplicadas', 'IDs duplicados', 'Perfis de features repetidos', 'Linhas excedentes nesses perfis'],\n"
+            "    'Resultado': [\n"
+            "        len(eda), source_columns, f'{positive} ({positive / len(eda):.2%})',\n"
+            "        int(eda['INCOME'].isna().sum()), int(eda.duplicated().sum()), int(eda['ID'].duplicated().sum()),\n"
+            "        int((profile_sizes > 1).sum()), int((profile_sizes - 1).clip(lower=0).sum())\n"
+            "    ],\n"
+            "})\n"
+            "display(summary)\n"
+            "campaign_distribution = (\n"
+            "    X_eda['CAMPAIGNS_ACCEPTED'].value_counts().sort_index()\n"
+            "    .rename_axis('CAMPAIGNS_ACCEPTED').reset_index(name='CLIENTES')\n"
+            ")\n"
+            "display(campaign_distribution)",
+        ),
+        md(
+            "## 3. Feature Engineering\n\n"
+            "AGE_AT_2014 aproxima a idade; TOTAL_CHILDREN resume a composição familiar; TOTAL_SPEND e TOTAL_PURCHASES medem valor e atividade de compra; "
+            "CAMPAIGNS_ACCEPTED resume respostas a campanhas anteriores; WEB_PURCHASE_SHARE representa a preferência de canal; "
+            "CUSTOMER_TENURE_DAYS mede o tempo de relacionamento. Nenhuma dessas variáveis usa RESPONSE. Perfis idênticos em X são agrupados para que nunca apareçam ao mesmo tempo no treino e no teste.\n\n"
+            "## 4. Preparação e tuning\n\n"
+            "O holdout usa o primeiro fold de StratifiedGroupKFold com cinco partes, preservando aproximadamente 80/20 e a proporção de RESPONSE sem dividir perfis repetidos. "
+            "A validação cruzada também é por grupos e ocorre somente no treino. Imputação e one-hot encoding ficam dentro do Pipeline."
+        ),
         code(
             "metrics = run(df)\n"
-            "metrics",
-            execution_count=4,
-            output=metrics_output,
+            "metrics"
         ),
         md(
-            "## 3. Resultado\n\n"
-            "Na execução validada com o DataFrame do Oracle, o ROC AUC passou de 0,6970 para 0,8340. "
-            "A referência tem precision 0,5636, recall 0,4627 e F1 0,5082. O modelo ajustado tem precision 0,3623, recall 0,7463 e F1 0,4878. "
-            "Confirme a contagem de 2.240 linhas e 29 colunas antes de interpretar as métricas. "
-            "Use `File > Download > Download .ipynb` para baixar o notebook com as saídas."
+            "## 5. Resultado\n\n"
+            "Compare precision, recall, F1 e ROC AUC no holdout reservado. Discuta os quatro indicadores; ROC AUC maior não implica que precision, recall e F1 também aumentem. "
+            "Execute todas as células no Colab e salve o notebook com as saídas antes de publicar a versão executada."
         ),
     ]
     notebook = {

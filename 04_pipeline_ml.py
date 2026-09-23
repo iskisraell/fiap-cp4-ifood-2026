@@ -1,8 +1,10 @@
 """Pipeline reproduzivel da Parte 2 do CP4.
 
 Pode receber o DataFrame retornado pelo Oracle ou ler o CSV para teste local.
-O holdout fica separado antes do tuning. Imputacao e one-hot ficam dentro do
-Pipeline, portanto usam apenas os dados de treino durante o ajuste.
+O holdout fica separado antes do tuning. Perfis de features repetidos ficam no
+mesmo grupo entre treino, teste e folds. Imputacao e one-hot ficam dentro do
+Pipeline, portanto usam apenas os dados de treino durante o ajuste. A ordenacao
+por ID e o random_state fixo mantem o split reproduzivel no Oracle e no CSV.
 """
 
 from pathlib import Path
@@ -11,7 +13,7 @@ import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_score
-from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.model_selection import GridSearchCV, StratifiedGroupKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.tree import DecisionTreeClassifier
@@ -19,6 +21,8 @@ from sklearn.tree import DecisionTreeClassifier
 
 RANDOM_STATE = 42
 DATA_PATH = Path(__file__).with_name("data.csv")
+if not DATA_PATH.exists():
+    DATA_PATH = Path(__file__).parent / "deliverable_fiap" / "data.csv"
 
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -27,8 +31,12 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
-def build_features(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
+def build_features(
+    df: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
     data = normalize_columns(df)
+    if "ID" in data.columns:
+        data = data.sort_values("ID", kind="mergesort").reset_index(drop=True)
     data["DT_CUSTOMER"] = pd.to_datetime(data["DT_CUSTOMER"], errors="coerce")
 
     # Features criadas antes do split, sem usar RESPONSE.
@@ -60,7 +68,8 @@ def build_features(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
     X = data.drop(
         columns=["ID", "YEAR_BIRTH", "DT_CUSTOMER", "Z_COSTCONTACT", "Z_REVENUE"]
     )
-    return X, y
+    groups = pd.util.hash_pandas_object(X, index=False)
+    return X, y, groups
 
 
 def make_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
@@ -95,9 +104,20 @@ def evaluate(name: str, model: Pipeline, X_test: pd.DataFrame, y_test: pd.Series
 
 
 def run(df: pd.DataFrame) -> pd.DataFrame:
-    X, y = build_features(df)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.20, stratify=y, random_state=RANDOM_STATE
+    X, y, groups = build_features(df)
+    holdout = StratifiedGroupKFold(
+        n_splits=5, shuffle=True, random_state=RANDOM_STATE
+    )
+    train_index, test_index = next(holdout.split(X, y, groups))
+    X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+    y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+    groups_train = groups.iloc[train_index]
+    groups_test = groups.iloc[test_index]
+    if set(groups_train).intersection(groups_test):
+        raise RuntimeError("Um perfil de features apareceu no treino e no teste.")
+    print(
+        f"holdout train={len(train_index)} test={len(test_index)} "
+        f"positive_test={int(y_test.sum())} ({y_test.mean():.2%})"
     )
 
     reference = Pipeline([
@@ -120,11 +140,13 @@ def run(df: pd.DataFrame) -> pd.DataFrame:
             "model__class_weight": [None, "balanced"],
         },
         scoring="roc_auc",
-        cv=5,
+        cv=StratifiedGroupKFold(
+            n_splits=5, shuffle=True, random_state=RANDOM_STATE
+        ),
         n_jobs=-1,
         refit=True,
     )
-    search.fit(X_train, y_train)
+    search.fit(X_train, y_train, groups=groups_train)
     print("best_params")
     print(search.best_params_)
     results.append(evaluate("tuned", search.best_estimator_, X_test, y_test))
@@ -132,8 +154,6 @@ def run(df: pd.DataFrame) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    source = Path(r"C:\Users\israel.toledo\Downloads\data.csv")
-    metrics = run(pd.read_csv(source))
+    metrics = run(pd.read_csv(DATA_PATH))
     print("\nmetricas finais")
     print(metrics.to_string(index=False))
-
