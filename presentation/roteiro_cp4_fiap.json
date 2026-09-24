@@ -1,0 +1,61 @@
+{
+  "title": "ROTEIRO DA APRESENTAÇÃO",
+  "subtitle": [
+    "CP4 | Case iFood",
+    "Cognitive Data Science + Machine Learning & Modelling",
+    "Grupo Perceptron · 1TIAPZ-2026"
+  ],
+  "subtitle_note": "Uma história curta sobre como usamos dados históricos para orientar um teste de campanha.",
+  "filename": "ROTEIRO_APRESENTACAO_CP4_FIAP",
+  "output_dir": "presentation/output",
+  "meta": [
+    {"label": "Sala:", "value": "1TIAPZ-2026"},
+    {"label": "Matéria:", "value": "Cognitive Data Science + Machine Learning & Modelling"},
+    {"label": "Grupo:", "value": "Perceptron"},
+    {"label": "Integrantes:", "value": "Giovanni Henrique Pereira Hessel (RM 570574)\nSuellen Pereira da Silva (RM 573862)\nArthur Zeferino (RM 570858)\nIsrael Carneiro de Toledo (RM 573854)"}
+  ],
+  "sections": [
+    {
+      "title": "SLIDE 1 · ISRAEL: PERGUNTA E OBJETIVO",
+      "body": [
+        "Nós começamos com uma pergunta de negócio: entre tantos clientes, quem tem maior chance de responder a uma campanha? A ideia é organizar melhor um teste de público. O modelo prevê respostas parecidas com as que vimos no histórico; ele não prova que a campanha causou a compra."
+      ]
+    },
+    {
+      "title": "SLIDE 2 · GIOVANNI: O QUE OS DADOS MOSTRAM",
+      "body": [
+        "Na base, 334 de 2.240 clientes aceitaram a campanha observada, cerca de 15%. Essa resposta é registrada na coluna RESPONSE. Também encontramos 193 perfis de preditores que se repetem, somando 201 registros além da primeira ocorrência. Como a resposta positiva é bem menos comum, olhar só a taxa geral de acerto poderia esconder um modelo que não encontra quase ninguém que responde."
+      ]
+    },
+    {
+      "title": "SLIDE 3 · SUELLEN: DO ORACLE À ANÁLISE",
+      "body": [
+        "Na parte de dados, criamos a tabela IFOOD_CUSTOMERS, definimos tipos e restrições e carregamos os registros do CSV. Em 18 de setembro, conferimos 2.240 linhas, 2.240 IDs distintos e a consulta Oracle com 29 campos. Demonstramos CREATE, ALTER, INSERT, UPDATE e DELETE em uma tabela separada, para não alterar a base principal. A modelagem agrupada atual ainda precisa ser executada com esse DataFrame Oracle."
+      ]
+    },
+    {
+      "title": "SLIDE 4 · SUELLEN: VARIÁVEIS QUE AJUDAM A CONTAR A HISTÓRIA",
+      "body": [
+        "Também criamos variáveis mais fáceis de interpretar. Juntamos gastos e compras, resumimos o número de campanhas aceitas e calculamos idade aproximada, composição familiar, participação de compras pela web e tempo de relacionamento. Essas variáveis ajudam a descrever o cliente sem usar a resposta que queremos prever."
+      ]
+    },
+    {
+      "title": "SLIDE 5 · ARTHUR: COMPARAÇÃO SEM VAZAMENTO",
+      "body": [
+        "Para comparar as árvores com justiça, reservamos um teste estratificado de 20% antes de ajustar os parâmetros. Mantivemos a proporção de respostas e os perfis iguais do mesmo lado. No treino, fizemos cinco dobras mantendo a proporção de respostas, escolhemos a configuração pela ROC AUC e ajustamos critério, profundidade, mínimo de clientes por folha e peso de classe. A imputação e as categorias também são ajustadas só dentro do treino."
+      ]
+    },
+    {
+      "title": "SLIDE 6 · ISRAEL: RESULTADO E PRÓXIMO PASSO",
+      "body": [
+        "Na validação local agrupada, a ROC AUC, que indica se quem respondeu fica acima de quem não respondeu no ranking, foi de 0,6357 na referência e 0,7973 na árvore ajustada. A precisão passou de 0,3651 para 0,5000, enquanto o recall caiu de 0,3433 para 0,3134. Isso mostra uma troca: a árvore ajustada ordenou melhor e aumentou a precisão, mas encontrou menos dos clientes que responderam. Como próximo passo de produto, escolheríamos o limite de contato e testaríamos a campanha contra um grupo de controle. Esses números ainda são da validação local com o CSV; precisamos salvar a execução agrupada usando o DataFrame Oracle."
+      ]
+    },
+    {
+      "title": "PASSAGEM PARA O NOTEBOOK",
+      "body": [
+        "Agora vamos abrir o notebook e mostrar a consulta, a separação do teste e a comparação das métricas."
+      ]
+    }
+  ]
+}
